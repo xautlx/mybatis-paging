@@ -47,7 +47,7 @@ public class Application {
             this.parameterObject = parameterObject;
         }
 
-        @Override
+
         public void run() {
             DataPaging dataPaging = userService.paging(parameterObject);
             System.out.println("thread[" + Thread.currentThread().getName() + "] " + dataPaging + " parameter[" + parameterObject + "]");
