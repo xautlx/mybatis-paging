@@ -21,6 +21,11 @@
 		</developer>
 	</developers>
 
+    <scm>
+        <connection>https://github.com/xautlx/mybatis-paging.git</connection>
+        <url>https://github.com/xautlx/mybatis-paging</url>
+    </scm>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.mybatis</groupId>
