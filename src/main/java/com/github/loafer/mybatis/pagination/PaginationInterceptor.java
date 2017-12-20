@@ -1,18 +1,14 @@
 package com.github.loafer.mybatis.pagination;
 
-import java.sql.Connection;
-import java.util.Iterator;
-import java.util.Properties;
-
+import com.github.loafer.mybatis.pagination.dialect.Dialect;
+import com.github.loafer.mybatis.pagination.helper.DialectHelper;
+import com.github.loafer.mybatis.pagination.helper.SqlHelper;
+import com.github.loafer.mybatis.pagination.util.PatternMatchUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.plugin.Interceptor;
-import org.apache.ibatis.plugin.Intercepts;
-import org.apache.ibatis.plugin.Invocation;
-import org.apache.ibatis.plugin.Plugin;
-import org.apache.ibatis.plugin.Signature;
+import org.apache.ibatis.plugin.*;
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.reflection.SystemMetaObject;
 import org.apache.ibatis.session.RowBounds;
@@ -21,18 +17,21 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 
-import com.github.loafer.mybatis.pagination.dialect.Dialect;
-import com.github.loafer.mybatis.pagination.helper.DialectHelper;
-import com.github.loafer.mybatis.pagination.helper.SqlHelper;
-import com.github.loafer.mybatis.pagination.util.PatternMatchUtils;
+import java.sql.Connection;
+import java.util.Iterator;
+import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Date Created  2014-2-17
  *
  * @author loafer[zjh527@163.com]
+ * @author lixia[xautlx@hotmail.com]
+ *
  * @version 2.0
  */
-@Intercepts({ @Signature(type = StatementHandler.class, method = "prepare", args = { Connection.class }) })
+@Intercepts({@Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class})})
 public class PaginationInterceptor implements Interceptor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -47,6 +46,8 @@ public class PaginationInterceptor implements Interceptor {
 
     private Dialect dialect;
     private String pagingSqlIdRegex;
+
+    private static final Pattern orderBySplitPattern = Pattern.compile("(.*)ORDER\\s+BY(.*)", Pattern.CASE_INSENSITIVE);
 
     public static void setPaginationOrderby(Sort sort) {
         PAGINATION_ORDERBY.set(sort);
@@ -65,6 +66,19 @@ public class PaginationInterceptor implements Interceptor {
 
     public static void clean() {
         PAGINATION_TOTAL.remove();
+    }
+
+    public static String[] splitOrderBy(String sql) {
+        Matcher matcher = orderBySplitPattern.matcher(sql);
+        if (matcher.find()) {
+            return new String[]{matcher.group(1), matcher.group(2)};
+        } else {
+            return new String[]{sql};
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(splitOrderBy("select * from test where name=1 Order   BY age desc")[1]);
     }
 
     public Object intercept(Invocation invocation) throws Throwable {
@@ -92,9 +106,7 @@ public class PaginationInterceptor implements Interceptor {
                 Iterator<Order> orders = sort.iterator();
                 if (orders.hasNext()) {
                     Order order = orders.next();
-                    originalSql = StringUtils.substringBefore(
-                            StringUtils.substringBefore(StringUtils.substringBefore(originalSql, " order "), "\norder "), "\torder ");
-                    originalSql = originalSql + " order by " + order.getProperty() + " " + order.getDirection();
+                    originalSql = splitOrderBy(originalSql)[0] + " order by " + order.getProperty() + " " + order.getDirection();
                 }
             }
             metaStatementHandler.setValue("delegate.boundSql.sql", dialect.getLimitString(originalSql, offset, limit));
