@@ -68,6 +68,11 @@ public class PaginationInterceptor implements Interceptor {
         PAGINATION_TOTAL.remove();
     }
 
+    /**
+     * 把SQL语句基于Order By进行切分
+     * @param sql 原始SQL语句
+     * @return 如果包含order by语句则返回2个元素数组，0元素为order by前部分，1元素为后部分；否则直接返回1个元素的原始SQL的数组
+     */
     public static String[] splitOrderBy(String sql) {
         Matcher matcher = orderBySplitPattern.matcher(sql);
         if (matcher.find()) {
